@@ -9,8 +9,8 @@
   ],
   "experiment_id": "final_v1",
   "fire": {
-    "k": 3,
-    "p": 0.3
+    "k": 2,
+    "p": 0.4
   },
   "ga": {
     "crossover_p": 0.8,

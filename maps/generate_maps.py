@@ -77,12 +77,19 @@ def gen_map1() -> list[str]:
 
 
 def gen_map2() -> list[str]:
-    """Reticula de salas 3x3 con 4 puertas por muro (oficinas)."""
+    """Oficinas: reticula de salas con 2 puertas por muro (una 'n').
+    Menos redundancia que 4 puertas: el fuego puede aislar salas y
+    forzar rodeos con costo de congestion."""
     g = new_grid()
     for c in (6, 12, 18):
-        vwall(g, c, 1, 23, {4: ".", 10: ".", 16: ".", 21: "."})
+        vwall(g, c, 1, 23, {9: ".", 16: "n"})
     for r in (6, 12, 18):
-        hwall(g, r, 1, 23, {3: ".", 9: ".", 15: ".", 21: "."})
+        hwall(g, r, 1, 23, {3: ".", 9: ".", 15: ".", 21: "n"})
+    # Pilares 2x2 en salas grandes (densidad sin sellar: dejan paso >=3).
+    block(g, 2, 2, 2, 2)
+    block(g, 8, 14, 2, 2)
+    block(g, 14, 8, 2, 2)
+    block(g, 20, 14, 2, 2)
     g[10][24] = "E"
     return to_rows(g)
 

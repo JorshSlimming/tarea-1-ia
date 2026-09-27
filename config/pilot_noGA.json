@@ -4,10 +4,9 @@
     "bfs",
     "ucs",
     "greedy",
-    "astar",
-    "ga"
+    "astar"
   ],
-  "experiment_id": "pilot_v1",
+  "experiment_id": "pilot_noGA",
   "fire": {
     "k": 2,
     "p": 0.4
@@ -29,7 +28,7 @@
     "map3"
   ],
   "max_turns": 200,
-  "outdir": "results/pilot_v1",
+  "outdir": "results/pilot_noGA",
   "seeds": [
     10000,
     10001,
