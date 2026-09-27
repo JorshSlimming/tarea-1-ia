@@ -1,0 +1,66 @@
+"""CLI del simulador: `run` (una corrida) y `benchmark` (lote con resume)."""
+
+from __future__ import annotations
+
+import argparse
+import sys
+
+from src.domain.map import load_map
+from src.experiment.benchmark import build_planner, run_benchmark
+from src.experiment.config import config_hash, load_config
+from src.simulation.engine import SimulationEngine
+from src.simulation.scenario import build_scenario
+
+
+def cmd_run(args) -> int:
+    sm = load_map(f"maps/{args.map}.txt")
+    sc = build_scenario(sm, args.seed, num_agents=args.agents,
+                        k=args.k, p=args.p, max_turns=args.max_turns)
+    planner = build_planner(args.algorithm, {"ga": {}}, sc.ga_seed)
+    m = SimulationEngine(sc, planner, max_turns=args.max_turns,
+                         algorithm_name=args.algorithm).run()
+    print(f"{args.map}/{args.algorithm}/{args.seed}: "
+          f"evac={m.evacuated}/{m.n_initial} dead={m.dead} "
+          f"trapped={m.trapped} clear={m.clearance_turn} "
+          f"turns={m.turns} runtime={m.total_runtime:.2f}s")
+    return 0
+
+
+def cmd_benchmark(args) -> int:
+    run_benchmark(args.config, resume=not args.no_resume, limit=args.limit)
+    return 0
+
+
+def cmd_hash(args) -> int:
+    print(config_hash(load_config(args.config)))
+    return 0
+
+
+def main(argv=None) -> int:
+    ap = argparse.ArgumentParser(prog="tarea1",
+                                 description="Escape de la Torre (Tarea 1 IA)")
+    sub = ap.add_subparsers(dest="cmd", required=True)
+    r = sub.add_parser("run", help="una simulación")
+    r.add_argument("--map", default="map1")
+    r.add_argument("--algorithm", default="bfs",
+                   choices=["bfs", "ucs", "greedy", "astar", "ga"])
+    r.add_argument("--seed", type=int, default=10000)
+    r.add_argument("--agents", type=int, default=30)
+    r.add_argument("--k", type=int, default=3)
+    r.add_argument("--p", type=float, default=0.3)
+    r.add_argument("--max-turns", type=int, default=200)
+    r.set_defaults(func=cmd_run)
+    b = sub.add_parser("benchmark", help="lote con checkpoints y resume")
+    b.add_argument("--config", default="config/pilot.json")
+    b.add_argument("--no-resume", action="store_true")
+    b.add_argument("--limit", type=int, default=None)
+    b.set_defaults(func=cmd_benchmark)
+    h = sub.add_parser("hash", help="hash de configuración")
+    h.add_argument("--config", default="config/pilot.json")
+    h.set_defaults(func=cmd_hash)
+    args = ap.parse_args(argv)
+    return args.func(args)
+
+
+if __name__ == "__main__":
+    sys.exit(main())

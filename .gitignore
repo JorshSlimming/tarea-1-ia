@@ -1,0 +1,9 @@
+# Documentación de diseño intermedia (local, no se entrega en GitHub)
+docs/
+# Entorno virtual y caches (local)
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+*.egg-info/
+results/
