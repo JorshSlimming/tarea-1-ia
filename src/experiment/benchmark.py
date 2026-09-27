@@ -140,9 +140,12 @@ def run_benchmark(config_path: str, resume: bool = True,
             finally:
                 fcntl.flock(lock.fileno(), fcntl.LOCK_UN)
 
-    def _report(i: int, res: dict) -> None:
+    completed = [n_done]  # mutable, compartido por reportes concurrentes
+
+    def _report(res: dict) -> None:
         elapsed = time.perf_counter() - t_start
-        done_n = n_done + i + 1
+        completed[0] += 1
+        done_n = completed[0]
         eta = elapsed / done_n * (total - done_n) if done_n else 0
         print(f"[{done_n}/{total}] {res['map_id']}/{res['algorithm']}/"
               f"{res['seed']}: evac={res['evacuated']} "
@@ -152,20 +155,20 @@ def run_benchmark(config_path: str, resume: bool = True,
     # Corte limpio: KeyboardInterrupt/kill termina el pool; lo ya persistido
     # queda; reejecutar retoma por clave (experiment_id, hash, mapa, seed, algo).
     if workers <= 1:
-        for i, (mid, seed, algo) in enumerate(pending):
+        for (mid, seed, algo) in pending:
             res = run_one(cfg, chash, exp_id, mid, seed, algo)
             _persist(res)
             new_runs += 1
-            _report(i, res)
+            _report(res)
     else:
         with ProcessPoolExecutor(max_workers=workers) as ex:
-            futs = {ex.submit(run_one, cfg, chash, exp_id, mid, seed, algo): i
-                    for i, (mid, seed, algo) in enumerate(pending)}
+            futs = [ex.submit(run_one, cfg, chash, exp_id, mid, seed, algo)
+                    for (mid, seed, algo) in pending]
             for fut in as_completed(futs):
                 res = fut.result()
                 _persist(res)
                 new_runs += 1
-                _report(futs[fut], res)
+                _report(res)
     manifest = {
         "experiment_id": exp_id, "config_hash": chash,
         "expected_runs": total,
