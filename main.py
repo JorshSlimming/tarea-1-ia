@@ -27,7 +27,8 @@ def cmd_run(args) -> int:
 
 
 def cmd_benchmark(args) -> int:
-    run_benchmark(args.config, resume=not args.no_resume, limit=args.limit)
+    run_benchmark(args.config, resume=not args.no_resume, limit=args.limit,
+                  workers=args.workers)
     return 0
 
 
@@ -71,6 +72,7 @@ def main(argv=None) -> int:
     b.add_argument("--config", default="config/pilot.json")
     b.add_argument("--no-resume", action="store_true")
     b.add_argument("--limit", type=int, default=None)
+    b.add_argument("--workers", type=int, default=1)
     b.set_defaults(func=cmd_benchmark)
     a = sub.add_parser("analyze", help="summary.csv + gráficos desde runs.csv")
     a.add_argument("--outdir", default="results/final_v1")

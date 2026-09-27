@@ -1,8 +1,16 @@
 """Benchmark runner: escenarios emparejados, checkpoints, resume, hash, ETA.
 
+Uso serial (1 worker):
+    run_benchmark(config_path)
+Uso paralelo (N workers, mismo config):
+    run_benchmark(config_path, workers=N)  o  main.py benchmark --workers N
+    Corte limpio: Ctrl-C / kill detiene tras la corrida en curso; reejecutar
+    retoma (clave experiment_id, config_hash, mapa, seed, algoritmo).
+
 - Escenario (mapa, seed) generado una vez -> cinco algoritmos (protocolo).
 - Orden: mapa -> seed -> algoritmo.
-- Persistencia por corrida: flush inmediato (runs.csv, agents.csv).
+- Persistencia por corrida: flush inmediato (runs.csv, agents.csv) con
+  lock inter-proceso (fcntl) para escritura paralela segura.
 - Resume: clave (experiment_id, config_hash, map_id, seed, algorithm).
 - results/<exp>/config.json, manifest.json, runs.csv, agents.csv.
 """
@@ -77,7 +85,13 @@ def _ensure_header(path: Path, fields: list[str]) -> bool:
 
 
 def run_benchmark(config_path: str, resume: bool = True,
-                  limit: int | None = None) -> Path:
+                  limit: int | None = None, workers: int = 1) -> Path:
+    import os
+    from concurrent.futures import ProcessPoolExecutor
+    from concurrent.futures import as_completed
+
+    from .worker import run_one
+
     cfg = load_config(config_path)
     chash = config_hash(cfg)
     exp_id = cfg.get("experiment_id", "exp")
@@ -87,7 +101,6 @@ def run_benchmark(config_path: str, resume: bool = True,
                                         encoding="utf-8")
     runs_path, agents_path = outdir / "runs.csv", outdir / "agents.csv"
     done = _done_keys(runs_path, exp_id, chash) if resume else set()
-    maps = {m: load_map(f"maps/{m}.txt") for m in cfg["maps"]}
     combos = [(m, s, a) for m in cfg["maps"] for s in cfg["seeds"]
               for a in cfg["algorithms"]]
     pending_all = [c for c in combos if c not in done]
@@ -95,51 +108,75 @@ def run_benchmark(config_path: str, resume: bool = True,
     total, n_done, t_start = len(combos), len(done), time.perf_counter()
     print(f"{exp_id}: {n_done}/{total} ya listas, "
           f"{len(pending)} pendientes en esta invocación "
-          f"({len(pending_all)} restantes, hash {chash})")
-    new_runs = new_agents = 0
-    for i, (mid, seed, algo) in enumerate(pending):
-        t0 = time.perf_counter()
-        sc = build_scenario(maps[mid], seed,
-                            num_agents=cfg.get("agents", 30),
-                            k=cfg["fire"]["k"], p=cfg["fire"]["p"],
-                            max_turns=cfg.get("max_turns", 200))
-        planner = build_planner(algo, cfg, sc.ga_seed)
-        m = SimulationEngine(sc, planner, max_turns=cfg.get("max_turns", 200),
-                             lam=cfg.get("lam", 4.0),
-                             algorithm_name=algo,
-                             config_hash=chash).run()
-        row = {"experiment_id": exp_id, **m.run_row()}
-        if _ensure_header(runs_path, RUN_FIELDS):
-            with open(runs_path, "w", newline="", encoding="utf-8") as f:
-                csv.DictWriter(f, fieldnames=RUN_FIELDS).writeheader()
-        with open(runs_path, "a", newline="", encoding="utf-8") as f:
-            csv.DictWriter(f, fieldnames=RUN_FIELDS).writerow(row)
-        if _ensure_header(agents_path, AGENT_FIELDS):
-            with open(agents_path, "w", newline="", encoding="utf-8") as f:
-                csv.DictWriter(f, fieldnames=AGENT_FIELDS).writeheader()
-        with open(agents_path, "a", newline="", encoding="utf-8") as f:
-            w = csv.DictWriter(f, fieldnames=AGENT_FIELDS)
-            for a in m.per_agent:
-                w.writerow({"experiment_id": exp_id, "algorithm": algo,
-                            "map_id": mid, "seed": seed, "config_hash": chash,
-                            **a})
-        new_runs += 1
-        new_agents += len(m.per_agent)
-        dt = time.perf_counter() - t0
+          f"({len(pending_all)} restantes, hash {chash}, workers={workers})",
+          flush=True)
+    lock_path = outdir / ".lock"
+    new_runs = 0
+
+    def _persist(res: dict) -> None:
+        import fcntl
+
+        with open(lock_path, "a+", encoding="utf-8") as lock:
+            fcntl.flock(lock.fileno(), fcntl.LOCK_EX)
+            try:
+                if _ensure_header(runs_path, RUN_FIELDS):
+                    with open(runs_path, "w", newline="",
+                              encoding="utf-8") as f:
+                        csv.DictWriter(f, fieldnames=RUN_FIELDS).writeheader()
+                with open(runs_path, "a", newline="", encoding="utf-8") as f:
+                    csv.DictWriter(f, fieldnames=RUN_FIELDS).writerow(res["row"])
+                if _ensure_header(agents_path, AGENT_FIELDS):
+                    with open(agents_path, "w", newline="",
+                              encoding="utf-8") as f:
+                        csv.DictWriter(f, fieldnames=AGENT_FIELDS).writeheader()
+                with open(agents_path, "a", newline="", encoding="utf-8") as f:
+                    w = csv.DictWriter(f, fieldnames=AGENT_FIELDS)
+                    for a in res["agents"]:
+                        w.writerow({"experiment_id": exp_id,
+                                    "algorithm": res["algorithm"],
+                                    "map_id": res["map_id"],
+                                    "seed": res["seed"],
+                                    "config_hash": chash, **a})
+            finally:
+                fcntl.flock(lock.fileno(), fcntl.LOCK_UN)
+
+    def _report(i: int, res: dict) -> None:
         elapsed = time.perf_counter() - t_start
         done_n = n_done + i + 1
         eta = elapsed / done_n * (total - done_n) if done_n else 0
-        print(f"[{done_n}/{total}] {mid}/{algo}/{seed}: "
-              f"evac={m.evacuated} clear={m.clearance_turn} {dt:.1f}s "
+        print(f"[{done_n}/{total}] {res['map_id']}/{res['algorithm']}/"
+              f"{res['seed']}: evac={res['evacuated']} "
+              f"clear={res['clearance']} {res['duration']:.1f}s "
               f"(elapsed {elapsed:.0f}s, ETA {eta:.0f}s)", flush=True)
+
+    # Corte limpio: KeyboardInterrupt/kill termina el pool; lo ya persistido
+    # queda; reejecutar retoma por clave (experiment_id, hash, mapa, seed, algo).
+    if workers <= 1:
+        for i, (mid, seed, algo) in enumerate(pending):
+            res = run_one(cfg, chash, exp_id, mid, seed, algo)
+            _persist(res)
+            new_runs += 1
+            _report(i, res)
+    else:
+        with ProcessPoolExecutor(max_workers=workers) as ex:
+            futs = {ex.submit(run_one, cfg, chash, exp_id, mid, seed, algo): i
+                    for i, (mid, seed, algo) in enumerate(pending)}
+            for fut in as_completed(futs):
+                res = fut.result()
+                _persist(res)
+                new_runs += 1
+                _report(futs[fut], res)
     manifest = {
         "experiment_id": exp_id, "config_hash": chash,
         "expected_runs": total,
         "completed_runs": n_done + new_runs,
         "new_runs_this_invocation": new_runs,
-        "agents_rows": new_agents,
         "timestamp": time.strftime("%Y-%m-%dT%H:%M:%S"),
     }
     (outdir / "manifest.json").write_text(json.dumps(manifest, indent=2),
                                           encoding="utf-8")
+    try:
+        os.remove(lock_path)
+    except OSError:
+        pass
     return outdir
