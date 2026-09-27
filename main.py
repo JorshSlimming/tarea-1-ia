@@ -31,10 +31,27 @@ def cmd_benchmark(args) -> int:
     return 0
 
 
+def cmd_analyze(args) -> int:
+    from src.analysis.summary import (
+        load_runs,
+        plot_clearance,
+        plot_survival,
+        summarize,
+        write_summary,
+    )
+
+    runs = load_runs(args.outdir)
+    summary = summarize(runs)
+    write_summary(args.outdir)
+    print(summary.to_string(index=False))
+    print("plots:", plot_survival(summary, args.outdir),
+          plot_clearance(summary, args.outdir))
+    return 0
+
+
 def cmd_hash(args) -> int:
     print(config_hash(load_config(args.config)))
     return 0
-
 
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(prog="tarea1",
@@ -55,6 +72,9 @@ def main(argv=None) -> int:
     b.add_argument("--no-resume", action="store_true")
     b.add_argument("--limit", type=int, default=None)
     b.set_defaults(func=cmd_benchmark)
+    a = sub.add_parser("analyze", help="summary.csv + gráficos desde runs.csv")
+    a.add_argument("--outdir", default="results/final_v1")
+    a.set_defaults(func=cmd_analyze)
     h = sub.add_parser("hash", help="hash de configuración")
     h.add_argument("--config", default="config/pilot.json")
     h.set_defaults(func=cmd_hash)
