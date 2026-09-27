@@ -1,0 +1,8 @@
+{
+  "experiment_id": "final_v1",
+  "config_hash": "718a8e29bed05af7",
+  "expected_runs": 3000,
+  "completed_runs": 3000,
+  "new_runs_this_invocation": 2986,
+  "timestamp": "2026-09-27T18:44:11"
+}
