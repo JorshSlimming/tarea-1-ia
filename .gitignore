@@ -7,3 +7,5 @@ __pycache__/
 .pytest_cache/
 *.egg-info/
 results/
+# Paquetes de entrega local (no se suben a GitHub)
+*.zip
