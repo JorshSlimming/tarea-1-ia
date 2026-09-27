@@ -39,6 +39,12 @@ def _snap(rows, occupancy=None):
 
 def test_bfs_min_steps_open():
     snap, sm = _snap(OPEN)
+    start = (1, 1)
+    r = BFSPlanner().plan(snap, start, sm.exit_pos)
+    assert r.success
+    assert r.path[0] == start and r.path[-1] == sm.exit_pos
+    # En este mapa abierto, el mínimo coincide con Manhattan: 5 pasos.
+    assert len(r.actions) == 5
 def test_ucs_avoids_congested_cell():
     # Fila con celda central ocupada (C=2,o=2 -> costo 5) vs rodeo por arriba.
     rows = ["########", "#......#", "#......#", "#..E...#", "########"]

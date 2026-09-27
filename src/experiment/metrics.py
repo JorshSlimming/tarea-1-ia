@@ -15,6 +15,9 @@ class RunMetrics:
     map_id: str
     seed: int
     config_hash: str = ""
+    code_hash: str = ""
+    maps_hash: str = ""
+    experiment_hash: str = ""
     n_initial: int = 0
     evacuated: int = 0
     dead: int = 0
@@ -98,6 +101,9 @@ class RunMetrics:
             "map_id": self.map_id,
             "seed": self.seed,
             "config_hash": self.config_hash,
+            "code_hash": self.code_hash,
+            "maps_hash": self.maps_hash,
+            "experiment_hash": self.experiment_hash,
             "n_initial": self.n_initial,
             "evacuated": self.evacuated,
             "dead": self.dead,

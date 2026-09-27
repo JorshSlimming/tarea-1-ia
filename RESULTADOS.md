@@ -74,3 +74,22 @@ timestamp), `summary.csv` (media/std/min/max por mapa/algoritmo), `plots/`
 
 Decisión de calibración: map2 degenerado (~99%) → puertas 4→2+estrecha + pilares,
 fuego k=3 p=0.3 → k=2 p=0.4 (discriminación verificada: map2 0.99→0.85).
+
+---
+
+## Nota posterior: revisión V2
+
+`final_v1` se conserva como **baseline histórico/diagnóstico** y no debe ser
+sobrescrito. La revisión posterior detectó:
+
+1. `evacuation_turn` y las muertes causadas por propagación post-movimiento se
+   registraban con índice 0-based; los valores de clearance V1 están desplazados
+   en -1 respecto del número humano de turnos.
+2. La ocupación no se reconstruía inmediatamente después de muertos/atrapados.
+3. El bloque “guided” del GA era efectivamente uniforme, igual que `PURE`.
+4. El hash V1 cubría sólo el JSON y no código/mapas.
+5. El hot path del GA reconstruía el mapa de ocupación reiteradamente.
+
+Por estas razones, los resultados que se usarán para el informe final deben salir
+de `final_v2`, una vez terminados los pilotos de calibración V2. `final_v1` sigue
+siendo útil para demostrar el diagnóstico y comparar tiempos antes/después.

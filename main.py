@@ -7,7 +7,7 @@ import sys
 
 from src.domain.map import load_map
 from src.experiment.benchmark import build_planner, run_benchmark
-from src.experiment.config import config_hash, load_config
+from src.experiment.config import config_hash, load_config, provenance
 from src.simulation.engine import SimulationEngine
 from src.simulation.scenario import build_scenario
 
@@ -36,6 +36,8 @@ def cmd_analyze(args) -> int:
     from src.analysis.summary import (
         load_runs,
         plot_clearance,
+        plot_congestion,
+        plot_outcomes,
         plot_survival,
         summarize,
         write_summary,
@@ -45,13 +47,19 @@ def cmd_analyze(args) -> int:
     summary = summarize(runs)
     write_summary(args.outdir)
     print(summary.to_string(index=False))
-    print("plots:", plot_survival(summary, args.outdir),
-          plot_clearance(summary, args.outdir))
+    print(
+        "plots:",
+        plot_survival(summary, args.outdir),
+        plot_clearance(summary, args.outdir),
+        plot_outcomes(summary, args.outdir),
+        plot_congestion(summary, args.outdir),
+    )
     return 0
 
 
 def cmd_hash(args) -> int:
-    print(config_hash(load_config(args.config)))
+    cfg = load_config(args.config)
+    print(provenance(cfg))
     return 0
 
 def main(argv=None) -> int:
@@ -77,7 +85,7 @@ def main(argv=None) -> int:
     a = sub.add_parser("analyze", help="summary.csv + gráficos desde runs.csv")
     a.add_argument("--outdir", default="results/final_v1")
     a.set_defaults(func=cmd_analyze)
-    h = sub.add_parser("hash", help="hash de configuración")
+    h = sub.add_parser("hash", help="hashes de config/código/mapas/experimento")
     h.add_argument("--config", default="config/pilot.json")
     h.set_defaults(func=cmd_hash)
     args = ap.parse_args(argv)

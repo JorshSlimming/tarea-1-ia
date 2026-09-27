@@ -1,0 +1,19 @@
+Tarea 1 IA — paquete V2 optimizado
+Fecha: 2026-09-27
+Estado al empaquetar: 56 tests passing
+
+Objetivo:
+- preservar final_v1 como baseline;
+- corregir turnos/occupancy;
+- hacer guided real en GA;
+- optimizar hot path del GA;
+- impedir mezcla de resultados incompatibles;
+- mejorar ETA y trazabilidad.
+
+Leer primero:
+1. MIGRACION_V1_A_V2.md
+2. CHANGELOG_V2.md
+3. V2_VALIDACION.md
+4. README.md
+
+No ejecutar final_v2 antes de comparar los pilotos GA H60/H100/H120.

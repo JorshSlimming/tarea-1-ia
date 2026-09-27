@@ -5,8 +5,9 @@ import pytest
 
 from src.domain.enums import Action
 from src.domain.map import parse_map
-from src.planners.genetic import GAConfig, GeneticPlanner, evaluate
-from src.simulation.state import SimulationState, make_snapshot
+from src.planners.genetic import GAConfig, GeneticPlanner, _random_walk, evaluate
+from src.simulation.state import SimulationState, apply_action, make_snapshot
+from src.simulation.rng import make_rng
 
 OPEN = ["#######", "#.....#", "#.....#", "#.....#", "#..E..#", "#######"]
 
@@ -26,15 +27,34 @@ def test_reproducible_same_seed_agent_turn():
     assert r1.metadata["best_fitness"] == r2.metadata["best_fitness"]
 
 
-def test_different_turn_different_evolution():
+def test_different_turn_uses_different_rng_seed():
+    # La propiedad determinista que necesitamos es que el turno participe en
+    # la derivación de seed; no exigimos que por azar la primera acción difiera.
+    from src.simulation.rng import derive_seed
+
+    assert derive_seed(99, 3, 7) != derive_seed(99, 3, 8)
+
+
+def test_guided_initialization_is_actually_guided():
     snap, sm = _snap()
-    g = GeneticPlanner(GAConfig(population=10, generations=5), ga_seed=99)
-    r1 = g.plan(snap, (1, 1), sm.exit_pos, agent_id=3, turn=7)
-    r2 = g.plan(snap, (1, 1), sm.exit_pos, agent_id=3, turn=8)
-    # Distinta seed derivada -> distinta evolución (casi seguro).
-    assert (r1.actions, r1.metadata["evaluations"]) != (
-        r2.actions, r2.metadata["evaluations"],
-    ) or True  # la igualdad eventual no es fallo
+    start = (1, 1)
+
+    def final_h(seq):
+        pos = start
+        for action in seq:
+            nxt = apply_action(snap, pos, action)
+            if nxt is not None:
+                pos = nxt
+        return snap.heuristic_to_exit(*pos)
+
+    guided_h = []
+    pure_h = []
+    for i in range(100):
+        guided = _random_walk(make_rng(123, "g", i), snap, start, 5, True, False)
+        pure = _random_walk(make_rng(123, "p", i), snap, start, 5, False, False)
+        guided_h.append(final_h(guided))
+        pure_h.append(final_h(pure))
+    assert sum(guided_h) / len(guided_h) < sum(pure_h) / len(pure_h)
 
 
 def test_chromosome_length_and_valid_genes():
@@ -44,7 +64,7 @@ def test_chromosome_length_and_valid_genes():
     r = g.plan(snap, (1, 1), sm.exit_pos, agent_id=0, turn=0)
     assert r.success  # GA siempre propone primera acción
     assert r.actions[0] in set(Action)
-    assert r.metadata["evaluations"] == 10 * 2  # sin early stop tan pronto
+    assert 10 <= r.metadata["evaluations"] <= 10 * 2
 
 
 def test_mutation_only_valid_genes():
@@ -64,7 +84,8 @@ def test_elitism_keeps_best():
     g = GeneticPlanner(cfg, ga_seed=7)
     r = g.plan(snap, (1, 1), sm.exit_pos, agent_id=0, turn=0)
     assert r.metadata["generations"] == 8
-    assert r.metadata["evaluations"] == 10 * 8
+    # Elitismo y cache evitan reevaluaciones innecesarias.
+    assert 10 <= r.metadata["evaluations"] <= 10 * 8
 
 
 def test_early_stopping_on_stagnation():
@@ -95,3 +116,16 @@ def test_ga_start_on_exit_waits():
     g = GeneticPlanner(GAConfig(population=6, generations=2), ga_seed=1)
     r = g.plan(snap, sm.exit_pos, sm.exit_pos, agent_id=0, turn=0)
     assert r.success and r.actions == (Action.WAIT,)
+
+
+def test_ga_path_cost_is_route_cost_not_objective_penalty():
+    snap, sm = _snap()
+    # Con horizonte 1 desde (1,1) no puede llegar a E; J incluye penalización
+    # >=2000, pero path_cost debe seguir representando sólo costo de ruta.
+    g = GeneticPlanner(
+        GAConfig(horizon=1, population=8, generations=2, stagnation=10),
+        ga_seed=11,
+    )
+    r = g.plan(snap, (1, 1), sm.exit_pos, agent_id=0, turn=0)
+    assert r.metadata["best_objective"] >= 2000
+    assert r.path_cost < 2000

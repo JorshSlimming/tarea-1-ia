@@ -1,0 +1,41 @@
+{
+  "agents": 30,
+  "algorithms": [
+    "ga"
+  ],
+  "experiment_id": "pilot_ga_v2_h60",
+  "fire": {
+    "k": 2,
+    "p": 0.4
+  },
+  "ga": {
+    "crossover_p": 0.8,
+    "elite": 2,
+    "generations": 20,
+    "horizon": 60,
+    "mutation_p": 0.016666666666666666,
+    "population": 30,
+    "stagnation": 6,
+    "tournament": 3
+  },
+  "lam": 4.0,
+  "maps": [
+    "map1",
+    "map2",
+    "map3"
+  ],
+  "max_turns": 200,
+  "outdir": "results/pilot_ga_v2_h60",
+  "seeds": [
+    10000,
+    10001,
+    10002,
+    10003,
+    10004,
+    10005,
+    10006,
+    10007,
+    10008,
+    10009
+  ]
+}

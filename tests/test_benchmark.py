@@ -2,9 +2,10 @@
 
 import csv
 import json
+from pathlib import Path
 
 from src.experiment.benchmark import run_benchmark
-from src.experiment.config import config_hash, load_config
+from src.experiment.config import config_hash, experiment_hash, load_config, maps_hash
 
 
 def _mini_config(tmp_path):
@@ -50,3 +51,19 @@ def test_config_hash_stable_and_sensitive(tmp_path):
     assert config_hash(cfg) == config_hash(load_config(cfg_path))
     cfg["fire"]["p"] = 0.5
     assert config_hash(cfg) != config_hash(load_config(cfg_path))
+    assert maps_hash(cfg) == maps_hash(load_config(cfg_path))
+    assert experiment_hash(cfg) != experiment_hash(load_config(cfg_path))
+
+
+def test_benchmark_refuses_mixed_experiment_hash(tmp_path):
+    import pytest
+
+    cfg_path = _mini_config(tmp_path)
+    run_benchmark(cfg_path, limit=1)
+
+    cfg = load_config(cfg_path)
+    cfg["fire"]["p"] = 0.5
+    Path(cfg_path).write_text(json.dumps(cfg), encoding="utf-8")
+
+    with pytest.raises(RuntimeError, match="incompatibles"):
+        run_benchmark(cfg_path, limit=1)

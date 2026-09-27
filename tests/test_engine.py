@@ -99,7 +99,7 @@ def test_evacuation_terminates_all_resolved():
     assert m.finished_reason == "ALL_RESOLVED"
     assert m.evacuated + m.dead + m.trapped == 30
     assert m.evacuated == 30
-    assert m.clearance_turn is not None
+    assert m.clearance_turn is not None and m.clearance_turn >= 1
     assert m.clearance_turn == max(
         a["evacuation_turn"] for a in m.per_agent if a["status"] == "EVACUATED"
     )
@@ -131,6 +131,7 @@ def test_fire_kills_agent_on_cell():
     m = eng.run()
     assert m.dead == 1
     assert m.per_agent[0]["death_turn"] == 0
+    assert eng.state.occupancy == {}
 
 
 def test_trapped_by_fire_cut_corridor():
@@ -160,6 +161,7 @@ def test_trapped_by_fire_cut_corridor():
     m = eng.run()
     assert m.trapped == 1
     assert m.per_agent[0]["status_reason"] == "DISCONNECTED"
+    assert eng.state.occupancy == {}
 
 
 def test_exit_capacity_one_per_turn():
@@ -186,4 +188,29 @@ def test_exit_capacity_one_per_turn():
     rebuild_occupancy(eng.state)
     m = eng.run()
     turns = sorted(a["evacuation_turn"] for a in m.per_agent)
-    assert turns[0] != turns[1]  # capacidad 1/turno
+    assert turns == [1, 2]  # 1-based y capacidad 1/turno
+
+
+def test_fire_after_first_step_records_death_turn_one():
+    from src.domain.map import parse_map
+    from src.experiment.metrics import RunMetrics
+    from src.simulation.state import SimulationState, rebuild_occupancy
+    from src.domain.models import Agent
+
+    sm = parse_map(["#####", "#..E#", "#####"], "fireturn")
+    tl = (frozenset(), frozenset({(1, 1)}), frozenset({(1, 1)}))
+    sc = Scenario(
+        map_id="fireturn", seed=9, spawns=((1, 1),), fire_origin=(1, 1),
+        fire_timeline=tl, conflict_seed=9, ga_seed=9,
+    )
+    eng = SimulationEngine.__new__(SimulationEngine)
+    eng.scenario, eng.planner, eng.max_turns, eng.lam = sc, StepPlanner(Action.WAIT), 2, 4.0
+    eng.smap, eng.timeline = sm, tl
+    eng.metrics = RunMetrics(algorithm="stub", map_id="fireturn", seed=9)
+    eng.is_ga = False
+    eng.state = SimulationState(smap=sm, agents=[Agent(id=0, position=(1, 1))])
+    rebuild_occupancy(eng.state)
+    m = eng.run()
+    assert m.dead == 1
+    assert m.per_agent[0]["death_turn"] == 1
+    assert eng.state.occupancy == {}

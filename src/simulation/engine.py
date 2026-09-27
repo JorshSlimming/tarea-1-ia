@@ -27,6 +27,9 @@ class SimulationEngine:
         lam: float = 4.0,
         algorithm_name: str = "",
         config_hash: str = "",
+        code_hash: str = "",
+        maps_hash: str = "",
+        experiment_hash: str = "",
         fire_timeline: tuple[frozenset, ...] | None = None,
     ) -> None:
         from src.domain.map import load_map
@@ -44,6 +47,9 @@ class SimulationEngine:
             map_id=scenario.map_id,
             seed=scenario.seed,
             config_hash=config_hash,
+            code_hash=code_hash,
+            maps_hash=maps_hash,
+            experiment_hash=experiment_hash,
         )
         self.is_ga = getattr(planner, "name", "") == "ga"
         self.state = SimulationState(
@@ -81,6 +87,7 @@ class SimulationEngine:
         # Fuego inicial: timeline[0] pudo traer foco sobre celda ocupable.
         st.fire_cells = self.timeline[0] if self.timeline else frozenset()
         self._kill_on_fire(turn=0)
+        rebuild_occupancy(st)
         while self._actives() and st.turn < self.max_turns:
             self._step()
         reason = "ALL_RESOLVED" if not self._actives() else "TIMEOUT"
@@ -88,6 +95,7 @@ class SimulationEngine:
             for a in self._actives():
                 a.status = AgentStatus.TRAPPED
                 a.status_reason = "TIMEOUT"
+            rebuild_occupancy(st)
         return self.metrics.finalize(self.state.agents, st.turn, reason)
 
     def _step(self) -> None:
@@ -139,18 +147,22 @@ class SimulationEngine:
         for agent in evacuated_now:
             agent.status = AgentStatus.EVACUATED
             agent.status_reason = ""
-            agent.evacuation_turn = st.turn
+            # La primera acción ejecutada corresponde al turno 1, no al 0.
+            agent.evacuation_turn = st.turn + 1
         rebuild_occupancy(st)
         # Fuego: timeline precalculado (turno t -> t+1).
         if st.turn + 1 < len(self.timeline):
             st.fire_cells = self.timeline[st.turn + 1]
-        self._kill_on_fire(turn=st.turn)
+        # El peligro actualizado ocurre al completar el turno t+1.
+        self._kill_on_fire(turn=st.turn + 1)
         # Atrapados: activos fuera del componente de la salida.
         reachable = self._flood_reachable()
         for agent in self._actives():
             if agent.position not in reachable:
                 agent.status = AgentStatus.TRAPPED
                 agent.status_reason = "DISCONNECTED"
+        # Mantener la invariante: occupancy contiene sólo agentes ACTIVE.
+        rebuild_occupancy(st)
         st.turn += 1
 
     def _kill_on_fire(self, turn: int) -> None:
