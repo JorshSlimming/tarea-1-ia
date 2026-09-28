@@ -37,14 +37,18 @@ Supervivencia clásicos idéntica V1=V2 (dif 0.000 en los 12 grupos);
 GA map2 0.55→0.73, map3 0.80→0.84, map1 0.18→0.20.
 Suite: **56 passed**.
 
-## Qué debe validar el notebook después de copiar el ZIP
+## Procedimiento histórico pre-benchmark (ya completado)
+
+> Este bloque documenta el procedimiento previo a `final_v2`. Ya ejecutado
+> el 2026-09-27; no relanzar salvo cambio de código/mapas/config.
 
 ```bash
 pytest -q
 PYTHONPATH=. .venv/bin/python main.py hash --config config/pilot_GA_v2_h60.json
 ```
 
-Luego ejecutar pilotos. No lanzar `final_v2` hasta haber escogido el horizonte del GA con seeds 10000+.
+Pilotos GA H60/H100/H120 con seeds 10000+ → H=60 fijado. `final_v2`
+terminó 3000/3000 (~22 min, 10 workers).
 
 ## Nota de cierre (benchmark ya completo)
 

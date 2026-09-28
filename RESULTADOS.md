@@ -126,6 +126,6 @@ sobrescrito. La revisión posterior detectó:
 4. El hash V1 cubría sólo el JSON y no código/mapas.
 5. El hot path del GA reconstruía el mapa de ocupación reiteradamente.
 
-Por estas razones, los resultados que se usarán para el informe final deben salir
-de `final_v2`, una vez terminados los pilotos de calibración V2. `final_v1` sigue
-siendo útil para demostrar el diagnóstico y comparar tiempos antes/después.
+Los resultados utilizados en el informe final son exclusivamente los de `final_v2`.
+`final_v1` se conserva únicamente como baseline histórico para documentar
+el diagnóstico y comparar tiempos antes/después.
