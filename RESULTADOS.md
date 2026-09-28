@@ -1,9 +1,45 @@
-# Registro de resultados (artefactos excluidos del ZIP/entrega)
+# Registro de resultados — experimento definitivo: final_v2
+
+Fecha: 2026-09-27. Experimento: `final_v2`, experiment hash `a65eb91a39ef4179`
+(config `e807fcfc735986e9`, código `e02d0416b7d51b2a`, mapas `b3362d9604322a0c`).
+**3000/3000 corridas**: 3 mapas × 200 seeds × 5 algoritmos, 200 por
+combinación (mapa, algoritmo), 0 duplicados/faltantes, 1 solo hash.
+Configuración final: fuego k=2 p=0.4, MAX_TURNS=200, 30 agentes,
+GA H=60/pop30/gen20, 10 workers, wall ~22 min (20:34–20:56).
+
+Calibración H (pilotos seeds 10000..10009): H60/H100/H120 indistinguibles
+en supervivencia (±0.01); H60 fijado por menor runtime (media 30s vs 47s/62s).
+
+## Resultados finales (summary.csv de final_v2)
+
+### Supervivencia media ± std
+
+| mapa | bfs | ucs | greedy | astar | ga |
+|---|---|---|---|---|---|
+| map1 | 0.49±0.32 | 0.49±0.32 | 0.48±0.32 | 0.49±0.32 | 0.20±0.10 |
+| map2 | 0.85±0.25 | 0.84±0.25 | 0.83±0.26 | 0.84±0.25 | 0.73±0.28 |
+| map3 | 0.85±0.24 | 0.85±0.24 | 0.85±0.24 | 0.85±0.24 | 0.84±0.25 |
+
+### Clearance medio ± std (solo corridas con ≥1 evacuado)
+
+| mapa | bfs | ucs | greedy | astar | ga |
+|---|---|---|---|---|---|
+| map1 | 48.6±28.0 | 50.1±29.4 | 52.1±30.2 | 49.8±29.1 | 52.4±36.8 |
+| map2 | 35.8±7.3 | 37.1±8.2 | 37.2±8.5 | 36.9±8.0 | 49.4±19.1 |
+| map3 | 33.9±6.7 | 34.0±6.8 | 33.9±6.7 | 34.0±6.8 | 34.0±7.2 |
+
+### Mejora V1→V2 (misma carga, 10 workers)
+
+CPU total: 15.6h→3.7h (**4.2×**). Medianas por algoritmo:
+bfs 0.66→0.33s (2.0×), ucs 1.43→0.68s (2.1×), greedy 0.19→0.13s (1.5×),
+astar 0.47→0.26s (1.8×), **ga 65.3→12.4s (5.2×)**. Wall: 93→22 min.
+Clásicos con supervivencia idéntica V1=V2 (dif 0.000); GA map2 0.55→0.73
+y map3 0.80→0.84 por población guiada real; map1 0.18→0.20 (H=60 corto
+para la serpentina).
+
+---
 
 Fecha: 2026-09-27. Experimento final: `final_v1`, config hash `718a8e29bed05af7`
-(fuego k=2, p=0.4, MAX_TURNS=200, 30 agentes, GA H60/pop30/gen20).
-Piloto clásico: `pilot_noGA`, hash `ddf4e79d6806bfd2` (k=3, p=0.3, 360 corridas).
-Piloto GA acotado: `pilot_GA` (3 corridas map3, factibilidad).
 
 El ZIP `tarea-1-ia_resultados_*.zip` incluye config/manifest/summary/plots de cada
 experimento, pero **excluye** los CSV brutos por peso (ver tabla). Todo lo excluido

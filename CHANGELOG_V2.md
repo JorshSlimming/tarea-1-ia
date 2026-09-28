@@ -42,7 +42,9 @@ Microbenchmark de referencia en `map1/seed=0`, 30 planificaciones GA sobre el sn
 - V2: ~0.34 s
 - mejora observada en ese bloque: **~5.2×**
 
-El speedup del benchmark completo depende de cuántos agentes/turnos permanezcan activos y debe medirse con pilotos V2 antes de estimar el tiempo final.
+Medición en benchmark completo (3000 corridas, 10 workers, 2026-09-27):
+CPU total 15.6h→3.7h (**4.2×**), GA mediana 65.3→12.4s (**5.2×**),
+wall 93→22 min. Clásicos 1.5–2.1× por grids densos del snapshot.
 
 ## Reproducibilidad / persistencia
 
