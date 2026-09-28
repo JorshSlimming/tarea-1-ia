@@ -1,0 +1,14 @@
+{
+  "experiment_id": "final_v2",
+  "config_hash": "e807fcfc735986e9",
+  "code_hash": "e02d0416b7d51b2a",
+  "maps_hash": "b3362d9604322a0c",
+  "experiment_hash": "a65eb91a39ef4179",
+  "git_commit": "9fbf812c3c5cf68b9c3a9325673361bfd968f5ba",
+  "git_dirty": false,
+  "expected_runs": 3000,
+  "completed_runs": 3000,
+  "new_runs_this_invocation": 3000,
+  "workers": 10,
+  "timestamp": "2026-09-27T20:56:44"
+}
